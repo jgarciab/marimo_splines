@@ -25,7 +25,8 @@ uvx marimo run --sandbox app.py
 1. **Polynomial:** one global polynomial, degree 0–3.
 2. **Piecewise, per region:** an independent polynomial per region; jumps at knots.
 3. **Piecewise, adjustments:** the same fit, written as a baseline plus adjustments
-   after each knot.
+   after each knot. The dashed gold baseline spans the full age range; raspberry
+   shading shows the sum of all active adjustments up to the purple fitted curve.
 4. **Regression spline:** degree d with matching value and first d − 1 derivatives
    at the knots (`bs()`). Beyond ages 2 and 80 the last piece continues.
 5. **Natural cubic spline:** straight beyond the boundary knots 2 and 80, zero

@@ -86,6 +86,34 @@ class FitChecks(unittest.TestCase):
                     self.assertTrue(np.isfinite(predictions[kind]).all())
                 np.testing.assert_allclose(predictions[1], predictions[2], atol=1e-6)
 
+    def test_adjustment_plot_spans_age_range(self) -> None:
+        """Baseline and cumulative step adjustments extend to the displayed endpoint."""
+        knots = self.knots(self.x, 2)
+        fit = self.fit(self.x, self.y, 0, knots)[2]
+        for tails, low, high in ((True, 0, 100), (False, 2, 80)):
+            fig = self.defs["draw_fit"](
+                2, fit, {"degree": 0, "knots": knots, "tails": tails}, (self.x, self.y)
+            )
+            ax = fig.axes[0]
+            baseline = next(line for line in ax.lines if line.get_label() == "Baseline")
+            np.testing.assert_allclose(baseline.get_xdata()[[0, -1]], [low, high])
+            baseline_height = self.y[self.x < knots[0]].mean()
+            np.testing.assert_allclose(baseline.get_ydata(), baseline_height)
+            shading = [c for c in ax.collections if hasattr(c, "get_paths")
+                       and c.__class__.__name__ == "FillBetweenPolyCollection"]
+            self.assertEqual(len(shading), len(knots))
+            for patch, left, right in zip(shading, knots, np.r_[knots[1:], high]):
+                vertices = patch.get_paths()[0].vertices
+                np.testing.assert_allclose(vertices[:, 0].min(), left)
+                np.testing.assert_allclose(vertices[:, 0].max(), right)
+                region_height = self.y[(self.x >= left) & (self.x < right)].mean()
+                if right == 80:
+                    region_height = self.y[self.x >= left].mean()
+                np.testing.assert_allclose(
+                    [vertices[:, 1].min(), vertices[:, 1].max()],
+                    sorted([baseline_height, region_height]),
+                )
+
     def test_spline_joins(self) -> None:
         """Values and the first d-1 derivatives agree at every interior knot."""
         knots = self.knots(self.x, 3)

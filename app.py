@@ -442,7 +442,9 @@ def explanations():
                 r"$\hat f(x)=P_d(x)\beta+\sum_{k=1}^{K}I(x\geq c_k)P_d(x)\delta_k$",
                 "Design row: baseline powers + powers switched on after each knot. "
                 "The adjustments add up; their constant terms still allow jumps. "
-                "Gold and raspberry show the first adjustment just after the first knot.",
+                "The dashed gold line extends the baseline across all ages. Raspberry shading "
+                "shows the total adjustment from that baseline to the purple fitted curve; "
+                "each adjustment stays active after its knot.",
             )
         if kind == 3:
             if degree == 0:
@@ -571,19 +573,25 @@ def plot_helpers(colours, design_matrix, np, plt, predict_model, predict_smoothe
                         zorder=5,
                     )
         if kind == 2:
-            next_edge = knots[1] if len(knots) > 1 else 80.0
-            grid = np.linspace(knots[0], knots[0] + 0.45 * (next_edge - knots[0]), 50)
+            grid = np.linspace(low, high, 400)
             base = design_matrix(grid, degree, knots, 0) @ fit["beta"][: degree + 1]
             ax.plot(grid, base, "--", color=colours["gold"], lw=1.8, label="Baseline")
-            end = curve(grid[-1:], kind, fit, settings)
-            ax.vlines(
-                grid[-1],
-                base[-1],
-                end[0],
-                color=colours["raspberry"],
-                lw=2,
-                label="Adjustment",
-            )
+            for j, (a, b) in enumerate(zip(knots, np.r_[knots[1:], high])):
+                grid = np.linspace(a, b, 240)
+                powers = design_matrix(grid, degree, knots, 0)
+                blocks = fit["beta"].reshape(-1, degree + 1)
+                base = powers @ blocks[0]
+                # Draw each region separately to preserve jumps at the knots.
+                adjusted = powers @ blocks[: j + 2].sum(axis=0)
+                ax.fill_between(
+                    grid,
+                    base,
+                    adjusted,
+                    color=colours["raspberry"],
+                    alpha=0.18,
+                    linewidth=0,
+                    label="Total adjustment" if j == 0 else None,
+                )
             ax.legend(loc="lower right", fontsize=8, frameon=True)
         ax.set(
             xlim=(low, high), ylim=Y_LIMITS, xlabel="Age (years)", ylabel="Height (cm)"

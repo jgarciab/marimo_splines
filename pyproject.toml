@@ -1,0 +1,11 @@
+[project]
+name = "nonlinear-fits"
+version = "0.1.0"
+description = "Six views of nonlinearity: polynomial, piecewise, and spline fits"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "marimo==0.23.0",
+    "matplotlib>=3.10,<4",
+    "numpy>=2.2,<3",
+]

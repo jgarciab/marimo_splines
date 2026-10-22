@@ -1,0 +1,9 @@
+build/
+.venv/
+.uv-cache/
+__pycache__/
+__marimo__/
+.ruff_cache/
+.coverage
+coverage.json
+.DS_Store

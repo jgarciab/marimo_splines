@@ -387,8 +387,6 @@ def introduction(mo):
         .fit-card .math {overflow-x:auto;}
         .fit-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
           gap:16px;align-items:start;}
-        .fit-note {border-left:4px solid #3d348b;background:#f3f2f9;
-          padding:12px 16px;}
         @media(max-width:850px) {.fit-grid {grid-template-columns:1fr;}}
         </style>"""),
             mo.md("""
@@ -399,10 +397,6 @@ def introduction(mo):
         NHANES 2009–2012, a US health survey. Height rises fast in childhood and
         levels off in adulthood, so a straight line cannot describe it.
         """),
-            mo.Html("""<div class="fit-note"><strong>The progression:</strong>
-        change the columns → split age into regions → join the pieces → make the
-        tails straight → penalise bending. Rewriting a model changes its
-        coefficients; adding constraints changes which curves it can fit.</div>"""),
         ]
     ).style({"max-width": "1500px", "margin": "auto"})
     return
@@ -416,47 +410,6 @@ def fitted_models(
     fits = fit_models(ages, heights, degree.value, knots)
     fits[5] = smoother(smoothness.value)
     return fits, knots
-
-
-@app.cell
-def matrix_recap(degree, knots, mo):
-    _powers = ["1", "x"] + [rf"x^{j}" for j in range(2, degree.value + 1)]
-    _powers = _powers[: degree.value + 1]
-    _row = r" & ".join(_powers)
-    _coefficients = r" \\ ".join(rf"\beta_{j}" for j in range(degree.value + 1))
-    _terms = r" + ".join(
-        rf"\beta_{j}" + ("" if j == 0 else r"x" if j == 1 else rf"x^{j}")
-        for j in range(degree.value + 1)
-    )
-    _knot_text = ", ".join(f"{k:g}" for k in knots)
-    mo.md(
-        r"""
-    ## Recap: a curve is still a row of predictors × a column of coefficients
-
-    In linear regression, **each row of the design matrix is one person** and
-    **each column is a predictor**. To fit curves, we create new columns from age
-    $x$: powers, region indicators, or hinge functions. These transformations are
-    the **basis functions**.
-
-    $$\underbrace{\hat{\mathbf y}}_{\text{predictions}}
-    =\underbrace{\mathbf X}_{\text{known transformed predictors}}
-    \underbrace{\hat{\boldsymbol\beta}}_{\text{estimated weights}},
-    \qquad X_{ij}=b_j(x_i).$$
-    """
-        + rf"""
-    **Current polynomial row, degree {degree.value}:**
-
-    $$\hat f(x)=\underbrace{{\begin{{bmatrix}}{_row}\end{{bmatrix}}}}_{{\text{{one row of X}}}}
-    \underbrace{{\begin{{bmatrix}}{_coefficients}\end{{bmatrix}}}}_{{\text{{one weight per column}}}}
-    ={_terms}.$$
-
-    Below, $P_d(x)=[1,x,\ldots,x^d]$ is shorthand for this block of columns.
-    $I_r(x)$ is 1 inside region $r$ and 0 elsewhere; $(x-c)_+=\max(x-c,0)$.
-    Current interior knots $c_k$: **{_knot_text}** years. Boundary knots: **2 and 80**.
-    Models 1–5 minimise squared errors; model 6 adds a penalty on bending.
-    """
-    ).style({"max-width": "1500px", "margin": "auto"})
-    return
 
 
 @app.cell
@@ -683,12 +636,13 @@ def gallery(
         )
         _cards.append(f'<section class="fit-card">{_card.text}</section>')
     _legend = (
-        "**Grey:** people · **Purple:** fitted curve · **Dotted:** interior knots."
+        "**Grey dots:** individual people · **Purple line:** fitted curve · "
+        "**Grey dotted vertical lines:** interior knots · "
+        "**Brown dashed vertical lines:** boundary knots at ages 2 and 80 "
+        "(natural and smoothing splines)."
     )
     if tails.value:
-        _legend += (
-            " **Shaded:** extrapolation, no data · **Dashed gold:** boundary knots."
-        )
+        _legend += " **Shaded areas:** extrapolation beyond the observed ages."
     _class = (
         'class="fit-grid"'
         if view.value == "All six"
@@ -696,12 +650,7 @@ def gallery(
     )
     mo.vstack(
         [
-            mo.md(
-                f"## Six fits, the same people\n\n{_legend}\n\n"
-                "Axes are shared; curves that leave the plot are cut off. Open circles "
-                "show the left-hand value at a jump. Plot 6 uses every distinct age as a "
-                "knot, so its knots are not drawn."
-            ),
+            mo.md(_legend),
             mo.Html(f"<div {_class}>" + "".join(_cards) + "</div>"),
         ]
     ).style({"max-width": "1500px", "margin": "auto"})
@@ -726,7 +675,7 @@ def flexibility_curves(
         return float(np.sqrt(np.mean((observed - predicted) ** 2)))
 
     def _scores(kind: int, d: int, knots):
-        """Coefficients, training RMSE and test RMSE of one model; None if not identified."""
+        """Coefficients, training RMSE and validation RMSE of one model; None if not identified."""
         train_x = design_matrix(ages, d, knots, kind)
         beta, _, rank, _ = np.linalg.lstsq(train_x, heights, rcond=None)
         if rank < train_x.shape[1]:
@@ -891,7 +840,7 @@ def flexibility_section(
         _axes,
         (
             "Training loss: the 300 people used for fitting",
-            "Test loss: 3,607 new people from the lecture's test set",
+            "Validation loss: 3,607 people not used for fitting",
         ),
     ):
         _ax.set_xscale("log")
@@ -911,29 +860,29 @@ def flexibility_section(
         [
             mo.md(
                 """
-        ## Choosing K and λ: training loss against test loss
+        ## Choosing K and λ: training loss against validation loss
 
         Each line is one model from above, fitted with more and more flexibility:
         a higher polynomial degree, more knots, or a smaller λ. The degree slider sets
         d for plots 2–5. **Open circles** mark the current slider settings; **stars**
-        mark the lowest test loss for each model. The y-axis starts at 8.8 cm, so the
+        mark the lowest validation loss for each model. The y-axis starts at 8.8 cm, so the
         stiffest models (a line has RMSE above 19 cm) are above the plot. Quantile knots
         move when K changes, so the training loss of a spline can go up slightly.
         """
             ),
             mo.as_html(_fig),
             mo.md(
-                "| Model | Best setting on the test set | Coefficients / edf | Training RMSE | Test RMSE |\n"
+                "| Model | Best setting on the validation set | Coefficients / edf | Training RMSE | Validation RMSE |\n"
                 "|:--|:--|--:|--:|--:|\n" + "\n".join(_best_rows)
             ),
             mo.md(
                 """
-        Training loss keeps falling as a model gets more coefficients. Test loss falls
-        while the extra flexibility captures the real pattern and rises once it starts
-        following noise in the 300 people. **We use the test set here only to show the
-        pattern.** To choose the degree, K or λ for a real analysis, use cross-validation
-        on the training data (for a smoothing spline, `smooth.spline()` does this
-        cheaply) and keep the test set for one final check.
+        Training loss keeps falling as a model gets more coefficients. Validation loss
+        falls while the extra flexibility captures the pattern and rises once it starts
+        following noise in the 300 training people. **Use validation loss to compare
+        settings:** training loss alone rewards flexibility. For a real analysis,
+        cross-validation on the training data can also guide the choice of degree,
+        K or λ.
         """
             ),
         ]
@@ -942,36 +891,8 @@ def flexibility_section(
 
 
 @app.cell
-def takeaway(degree, knot_count, mo, n_distinct):
-    _k, _d = knot_count.value, degree.value
-    mo.md(rf"""
-    ## What to take away
-
-    **Rewriting keeps the model:** plots 2 and 3 use **{(_k + 1) * (_d + 1)}**
-    coefficients and give identical predictions. A new basis alone does not make a join smooth.
-
-    **Constraints reduce the model's freedom:** a cubic in each of {_k + 1} regions
-    starts with **{4 * (_k + 1)}** coefficients. Matching height, slope and curvature
-    at the {_k} knots removes **{3 * _k}**, leaving **{_k + 4}**. Straight tails with
-    zero curvature at the boundaries leave **{_k + 2}**. In general a spline of degree
-    d with K knots has K + d + 1 coefficients.
-
-    **Natural splines are cubic here.** They are defined for odd degrees 2m − 1, with
-    a polynomial of degree m − 1 beyond the boundary knots, because that is the
-    solution of a penalised problem like plot 6. For even degrees (d = 0, 2) they are
-    not defined. For d = 1 the natural spline has flat tails but no constraint inside
-    the data, so it fits exactly like plot 4. Only the cubic case adds constraints
-    that change the fit, which is why ISLR and R's `ns()` use only that one.
-
-    **A penalty controls how much freedom is used:** a smoothing spline keeps a knot at
-    each distinct age. Its bending penalty is $\int f''(t)^2\,dt$. At $\lambda=0$ the
-    effective df is {n_distinct}, the number of distinct ages; as $\lambda$ grows it
-    approaches 2 (an intercept and a slope).
-
-    **Counting convention:** $K$ counts interior knots; the counts include the intercept.
-    ISLR's `bs()` and `ns()` examples count basis columns without the intercept
-    (p. 299, footnote 4).
-
+def source_note(mo):
+    mo.md(r"""
     ---
     *Javier Garcia-Bernardo · Utrecht University · ML4Prediction*
     Data: NHANES 2009–2012 via the R package `NHANES` (`NHANESraw`), unweighted.

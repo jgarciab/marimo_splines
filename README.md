@@ -33,13 +33,12 @@ uvx marimo run --sandbox app.py
 6. **Smoothing spline:** cubic, a knot at every distinct age, penalty λ∫f''².
 
 **Choosing K and λ.** Two plots side by side: training RMSE (the 300 people) and
-test RMSE (the lecture's 3,607 test people) against the number of coefficients
+validation RMSE (the lecture's 3,607 validation people) against the number of coefficients
 (effective df for the smoothing spline, log scale). One line per model: polynomial
 degree 0–12, piecewise and splines with 0–20 knots at the current degree, smoothing
 spline over a grid of λ. The natural spline line appears only when d = 3. Open circles mark the current slider settings, stars the
-lowest test RMSE; a table lists those settings. The page says that the test set is
-used here only to show the pattern and that K or λ should be chosen by
-cross-validation on the training data.
+lowest validation RMSE; a table lists those settings. Use validation loss to compare settings; cross-validation on the training data
+can also guide the choice of degree, K or λ.
 
 Controls (sidebar): degree d, 0–3 (plots 1–4; plot 5 needs d = 3), number of interior knots K, 1–6, default 2 (plots 2–5),
 λ (plot 6), a focus dropdown, and a checkbox for the extrapolation zones (ages 0–2
@@ -57,7 +56,7 @@ set.seed(16);   small <- training[sample.int(nrow(training), 300L), ]
 ```
 
 `app.py` embeds the ages and heights of the 300 people (`small`) and of the 3,607
-test people. Age is in whole years and top-coded at 80; 77 distinct ages occur in
+validation people. Age is in whole years and top-coded at 80; 77 distinct ages occur in
 the 300. Unweighted; a teaching example, not population inference.
 
 ## Mathematical details

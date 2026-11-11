@@ -421,7 +421,7 @@ def explanations():
                 "One polynomial covers all ages. A higher degree lets it bend, "
                 "but every coefficient changes the curve everywhere.",
                 r"$\hat f(x)=P_d(x)\,\beta$",
-                "Design row: powers of age. One coefficient per power, including the constant.",
+                "",
             )
         if kind == 1:
             return (
@@ -432,16 +432,13 @@ def explanations():
                     else ""
                 ),
                 r"$\hat f(x)=\sum_{r=0}^{K} I_r(x)\,P_d(x)\,\beta_r$",
-                "Design row: one block of powers per region. Only the block of the "
-                "person's own region is nonzero.",
+                "",
             )
         if kind == 2:
             return (
                 "The fit is identical to plot 2. Start with the first region's polynomial, "
                 "then add a polynomial adjustment after each knot.",
                 r"$\hat f(x)=P_d(x)\beta+\sum_{k=1}^{K}I(x\geq c_k)P_d(x)\delta_k$",
-                "Design row: baseline powers + powers switched on after each knot. "
-                "The adjustments add up; their constant terms still allow jumps. "
                 "The dashed gold line extends the baseline across all ages. Raspberry shading "
                 "shows the total adjustment from that baseline to the purple fitted curve; "
                 "each adjustment stays active after its knot.",
@@ -463,8 +460,7 @@ def explanations():
             return (
                 join + " Beyond 2 and 80 the last polynomial piece simply continues.",
                 r"$\hat f(x)=P_d(x)\beta+\sum_{k=1}^{K}\gamma_k(x-c_k)_+^d$",
-                "Design row: powers + one hinge column per knot. The hinge is zero "
-                "before its knot, which forces the pieces to join.",
+                "",
             )
         if kind == 4:
             if degree != 3:
@@ -633,15 +629,15 @@ def gallery(
             _df = f"{_fit['df']} fitted coefficient" + ("s" if _fit["df"] != 1 else "")
         else:
             _df = "Requires degree ≥ 1"
-        _card = mo.vstack(
-            [
-                mo.md(f"### {model_names[_kind]}\n\n**{_df}**"),
-                mo.as_html(_fig),
-                mo.md(_text),
-                mo.md(_formula),
-                mo.md(_columns),
-            ]
-        )
+        _content = [
+            mo.md(f"### {model_names[_kind]}\n\n**{_df}**"),
+            mo.as_html(_fig),
+            mo.md(_text),
+            mo.md(_formula),
+        ]
+        if _columns:
+            _content.append(mo.md(_columns))
+        _card = mo.vstack(_content)
         _cards.append(f'<section class="fit-card">{_card.text}</section>')
     _legend = (
         "**Grey dots:** individual people · **Purple line:** fitted curve · "
